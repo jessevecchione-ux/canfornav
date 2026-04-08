@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canfornav Climate Services &#x2014; Unified Dashboard</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg-deep: #0a0e17;
+  --bg-panel: #0d1219;
+  --bg-card: #111820;
+  --bg-card-hover: #161d28;
+  --border: #1e2a38;
+  --accent-teal: #00bfa5;
+  --accent-orange: #f5793b;
+  --critical: #e74c3c;
+  --caution: #f0a62f;
+  --safe: #27ae60;
+  --text-primary: #d4dae3;
+  --text-secondary: #8b95a5;
+  --text-dim: #5a6577;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {  font-family: 'Inter', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.header {
+  background: linear-gradient(180deg, #0d1219 0%, #0b0f18 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.wni-logo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.header-content h1 { font-size: 15px; font-weight: 600; }
+.header-content p { font-size: 10px; color: var(--text-dim); margin-top: 1px; }
+
+/* --- Two-column layout --- */
+.main-layout {  display: flex;
+  height: calc(100vh - 56px);
+  overflow: hidden;
+}
+
+.left-panel {
+  width: 33.333%;
+  min-width: 280px;
+  max-width: 480px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+
+.right-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+/* --- Map section (left) --- */
+.map-wrapper {
+  padding: 12px 12px 0;
+}
+
+.map-wrapper h2 {
+  font-size: 11px;
+  text-transform: uppercase;  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+#mapContainer {
+  width: 100%;
+  height: 0;
+  flex: 1;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: #0d1520;
+  z-index: 1;
+}
+
+/* Make left-panel's map area fill remaining space */
+.map-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px 8px;
+}
+
+.map-area #mapContainer {
+  flex: 1;
+  height: auto;
+  min-height: 200px;
+}
+
+.map-legend {  display: flex;
+  gap: 16px;
+  padding: 8px 12px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.legend-item { display: flex; align-items: center; gap: 6px; }
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Location list under map */
+.location-list {
+  padding: 0 12px 12px;
+  overflow-y: auto;
+  flex-shrink: 0;
+  max-height: 240px;
+  border-top: 1px solid var(--border);
+}
+
+.location-list h3 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);  margin: 10px 0 4px;
+}
+
+.loc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.loc-item:hover { background: var(--bg-card-hover); }
+
+.loc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.loc-item .region {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+/* --- Right panel sections --- */.analysis-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.analysis-section h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-section { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+
+table th {
+  background: rgba(0, 191, 165, 0.1);
+  color: var(--accent-teal);
+  padding: 8px 6px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);  white-space: nowrap;
+}
+
+table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+table input {
+  width: 100%;
+  padding: 4px;
+  background: rgba(0, 191, 165, 0.1);
+  border: 1px solid var(--border);
+  color: var(--accent-teal);
+  font-size: 11px;
+  border-radius: 2px;
+  font-family: 'Courier New', monospace;
+}
+
+table input:focus {
+  outline: none;
+  border-color: var(--accent-teal);
+  box-shadow: 0 0 4px rgba(0, 191, 165, 0.2);
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 2px;  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.risk-high { background: rgba(231, 76, 60, 0.2); color: #e74c3c; }
+.risk-moderate { background: rgba(240, 166, 47, 0.2); color: #f0a62f; }
+.risk-low { background: rgba(39, 174, 96, 0.2); color: #27ae60; }
+
+.note {
+  font-size: 9px;
+  color: var(--text-dim);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* Override Leaflet popup styling */
+.leaflet-popup-content-wrapper {
+  background: #111820;
+  color: #d4dae3;
+  border: 1px solid #1e2a38;
+  border-radius: 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+}
+.leaflet-popup-tip { background: #111820; }
+.leaflet-popup-content { margin: 8px 12px; }
+.leaflet-popup-content strong { color: #00bfa5; }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+/* Responsive */
+@media (max-width: 860px) {
+  body { overflow: auto; }
+  .main-layout { flex-direction: column; height: auto; }
+  .left-panel { width: 100%; max-width: none; border-right: none; border-bottom: 1px solid var(--border); }
+  .map-area #mapContainer { min-height: 350px; }
+  .right-panel { overflow: visible; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <svg class="wni-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="8" width="84" height="84" rx="4" transform="rotate(-8 50 50)" fill="#0068B7"/>
+    <text x="50" y="62" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-weight="900" font-size="38" fill="white" letter-spacing="-1">WNI</text>
+  </svg>
+  <div class="header-content">
+    <h1>Canfornav Climate Services Dashboard</h1>
+    <p>Unified Seasonal Forecast &amp; Climate Impact Analysis</p>
+  </div>
+</div>
+<div class="main-layout">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="map-wrapper">
+      <h2>All Locations</h2>
+    </div>
+    <div class="map-area">
+      <div id="mapContainer"></div>
+    </div>
+    <div class="map-legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #00bfa5;"></div>
+        <span>Seasonal</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background: #f5793b;"></div>
+        <span>Climate</span>
+      </div>
+    </div>
+    <div class="location-list" id="locationList"></div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="analysis-section">
+      <h2>Seasonal Forecast Analysis</h2>
+      <div class="table-section">
+        <table>          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Region</th>
+              <th>Coordinates</th>
+              <th>Current Level</th>
+              <th>Channel Depth</th>
+              <th>Unit</th>
+            </tr>
+          </thead>
+          <tbody id="seasonalTableBody"></tbody>
+        </table>
+      </div>
+      <div class="note">Seasonal forecasts include 26 weeks of predictions with confidence bands (P20/P80) and anomalies from historical mean.</div>
+    </div>
+
+    <div class="analysis-section">
+      <h2>Climate Impact Analysis</h2>
+      <div class="table-section">
+        <table>
+          <thead>
+            <tr>
+              <th>Location</th>
+              <th>Region</th>
+              <th>Coordinates</th>
+              <th>Temp Trend (&deg;C)</th>
+              <th>Precip Change (%)</th>
+              <th>SLR (mm/yr)</th>
+              <th>Storm Freq</th>              <th>Cost Impact (USD)</th>
+              <th>Risk Level</th>
+            </tr>
+          </thead>
+          <tbody id="climateTableBody"></tbody>
+        </table>
+      </div>
+      <div class="note">Cost Impact field is editable. Enter placeholder values for scenario modeling. Climate metrics are 30-year projections.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SEASONAL_LOCATIONS = [
+  { type:'seasonal', id:"toledo", name:"Toledo, OH", region:"Lake Erie", coord:"41\u00b041'00\"N 83\u00b028'00\"W", lat:41.6833, lng:-83.4667, currentLevel:174.32, channelDepth:10.4, unit:"m IGLD85" },
+  { type:'seasonal', id:"thunder_bay", name:"Thunder Bay", region:"Lake Superior", coord:"48\u00b024'00\"N 89\u00b014'00\"W", lat:48.4, lng:-89.2333, currentLevel:183.45, channelDepth:9.1, unit:"m IGLD85" },
+  { type:'seasonal', id:"trois_rivieres", name:"Trois-Rivi\u00e8res", region:"St. Lawrence Seaway", coord:"46\u00b021'00\"N 72\u00b033'00\"W", lat:46.35, lng:-72.55, currentLevel:4.67, channelDepth:11.3, unit:"m CD" },
+  { type:'seasonal', id:"san_lorenzo", name:"San Lorenzo", region:"R\u00edo de la Plata, Argentina", coord:"34\u00b044'00\"S 58\u00b045'00\"W", lat:-34.7333, lng:-58.75, currentLevel:1.85, channelDepth:10.4, unit:"m" }
+];
+const CLIMATE_LOCATIONS = [
+  { type:'climate', id:"port_montreal", name:"Port of Montreal", region:"St. Lawrence Seaway, Canada", coord:"45\u00b032'49\"N 73\u00b031'48\"W", lat:45.5469, lng:-73.53, focus:"Water stress, sea level change, temperature shifts", costImpact:0, metrics:{ tempTrend:1.8, precip_change:8.2, seaLevelRise:0.34, stormFreqChange:12, operationalRisk:"Moderate" } },
+  { type:'climate', id:"port_sorel_tracy", name:"Port of Sorel-Tracy", region:"St. Lawrence Seaway, Canada", coord:"45\u00b059'44\"N 73\u00b010'20\"W", lat:45.9956, lng:-73.172, focus:"Water availability, drought risk", costImpact:0, metrics:{ tempTrend:1.9, precip_change:-3.5, seaLevelRise:0.35, stormFreqChange:5, operationalRisk:"Low-Moderate" } },
+  { type:'climate', id:"bridge_americas", name:"Bridge of the Americas", region:"Panama Canal", coord:"8\u00b056'36\"N 79\u00b033'52\"W", lat:8.9433, lng:-79.5644, focus:"Precipitation variability, water supply stress", costImpact:0, metrics:{ tempTrend:0.95, precip_change:12.1, seaLevelRise:0.28, stormFreqChange:8, operationalRisk:"High" } },
+  { type:'climate', id:"thousand_islands", name:"Thousand Islands Int'l Bridge", region:"St. Lawrence Seaway, Canada", coord:"44\u00b021'46\"N 75\u00b058'57\"W", lat:44.3628, lng:-75.9825, focus:"Ice season changes, flow regulation impacts", costImpact:0, metrics:{ tempTrend:2.1, precip_change:6.8, seaLevelRise:0.31, stormFreqChange:3, operationalRisk:"Moderate" } },
+  { type:'climate', id:"soo_locks", name:"Soo Locks (Sault Ste. Marie)", region:"Great Lakes, Michigan", coord:"45\u00b030'12\"N 84\u00b021'06\"W", lat:45.503, lng:-84.352, focus:"Precipitation trends, lake level volatility", costImpact:0, metrics:{ tempTrend:1.7, precip_change:9.5, seaLevelRise:0.25, stormFreqChange:7, operationalRisk:"Moderate" } }
+];
+/* ── Leaflet Map ── */
+let map = null;
+
+function initMap() {
+  if (typeof L === 'undefined') { setTimeout(initMap, 200); return; }
+
+  const container = document.getElementById('mapContainer');
+  if (!container || container.offsetHeight === 0) { setTimeout(initMap, 200); return; }
+
+  map = L.map(container, {
+    center: [20, -72],
+    zoom: 3,
+    zoomControl: true,
+    scrollWheelZoom: true,
+    attributionControl: false
+  });
+
+  // CartoDB Dark Matter tiles — matches our dark theme
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd'
+  }).addTo(map);
+
+  // Small attribution
+  L.control.attribution({ prefix: false, position: 'bottomright' })
+    .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" style="color:#5a6577">OSM</a> &copy; <a href="https://carto.com/" style="color:#5a6577">CARTO</a>')
+    .addTo(map);
+  // Add seasonal markers (teal)
+  SEASONAL_LOCATIONS.forEach(loc => {
+    L.circleMarker([loc.lat, loc.lng], {
+      radius: 8, fillColor: '#00bfa5', color: '#00bfa5',
+      weight: 2, opacity: 0.9, fillOpacity: 0.5
+    }).addTo(map).bindPopup(`<strong>${loc.name}</strong><br><span style="font-size:10px;color:#8b95a5">${loc.region}<br>${loc.coord}</span>`);
+  });
+
+  // Add climate markers (orange)
+  CLIMATE_LOCATIONS.forEach(loc => {
+    L.circleMarker([loc.lat, loc.lng], {
+      radius: 8, fillColor: '#f5793b', color: '#f5793b',
+      weight: 2, opacity: 0.9, fillOpacity: 0.5
+    }).addTo(map).bindPopup(`<strong style="color:#f5793b">${loc.name}</strong><br><span style="font-size:10px;color:#8b95a5">${loc.region}<br>${loc.coord}</span>`);
+  });
+
+  // Fit bounds to show all markers with padding
+  const allCoords = [...SEASONAL_LOCATIONS, ...CLIMATE_LOCATIONS].map(l => [l.lat, l.lng]);
+  map.fitBounds(allCoords, { padding: [30, 30] });
+
+  // Force re-render after layout settles
+  setTimeout(() => { map.invalidateSize(); }, 300);
+}
+/* ── Location list (left panel) ── */
+function renderLocationList() {
+  let html = '<h3>Seasonal Locations</h3>';
+  SEASONAL_LOCATIONS.forEach(loc => {
+    html += `<div class="loc-item" data-lat="${loc.lat}" data-lng="${loc.lng}">
+      <div class="loc-dot" style="background:#00bfa5"></div>${loc.name}
+      <span class="region">${loc.region}</span>
+    </div>`;
+  });
+  html += '<h3>Climate Locations</h3>';
+  CLIMATE_LOCATIONS.forEach(loc => {
+    html += `<div class="loc-item" data-lat="${loc.lat}" data-lng="${loc.lng}">
+      <div class="loc-dot" style="background:#f5793b"></div>${loc.name}
+      <span class="region">${loc.region}</span>
+    </div>`;
+  });
+  document.getElementById('locationList').innerHTML = html;
+
+  // Click to fly to location on map
+  document.querySelectorAll('.loc-item[data-lat]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (map) map.flyTo([parseFloat(el.dataset.lat), parseFloat(el.dataset.lng)], 8, { duration: 1 });
+    });
+  });
+}
+/* ── Tables (right panel) ── */
+function renderSeasonalTable() {
+  let html = '';
+  SEASONAL_LOCATIONS.forEach(loc => {
+    html += `<tr>
+      <td><strong>${loc.name}</strong></td>
+      <td>${loc.region}</td>
+      <td style="font-size:9px;">${loc.coord}</td>
+      <td>${loc.currentLevel.toFixed(2)}</td>
+      <td>${loc.channelDepth}</td>
+      <td>${loc.unit}</td>
+    </tr>`;
+  });
+  document.getElementById('seasonalTableBody').innerHTML = html;
+}
+
+function renderClimateTable() {
+  let html = '';
+  CLIMATE_LOCATIONS.forEach(loc => {
+    const m = loc.metrics;
+    const riskClass = m.operationalRisk.includes('High') ? 'risk-high' : m.operationalRisk.includes('Low') ? 'risk-low' : 'risk-moderate';
+    html += `<tr>
+      <td><strong>${loc.name}</strong></td>
+      <td>${loc.region}</td>
+      <td style="font-size:9px;">${loc.coord}</td>
+      <td>${m.tempTrend.toFixed(2)}</td>
+      <td>${m.precip_change.toFixed(1)}</td>
+      <td>${m.seaLevelRise.toFixed(2)}</td>
+      <td>${m.stormFreqChange}</td>      <td style="padding:0;"><input type="number" value="${loc.costImpact}" data-loc="${loc.id}" onchange="updateCost(this)"></td>
+      <td><span class="risk-badge ${riskClass}">${m.operationalRisk}</span></td>
+    </tr>`;
+  });
+  document.getElementById('climateTableBody').innerHTML = html;
+}
+
+function updateCost(input) {
+  const loc = CLIMATE_LOCATIONS.find(l => l.id === input.dataset.loc);
+  if (loc) { loc.costImpact = parseFloat(input.value) || 0; }
+}
+
+/* ── Init ── */
+document.addEventListener('DOMContentLoaded', () => {
+  renderLocationList();
+  renderSeasonalTable();
+  renderClimateTable();
+  initMap();
+});
+</script>
+</body>
+</html>
